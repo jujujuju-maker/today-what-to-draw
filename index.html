@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <title>今天画什么 V2.2</title>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root { --bg: #f2efe7; --card: #fefcf8; --text: #2a2a28; --border: #e2dbcf; --accent: #c7b59b; --pointer: #3a3a35; --shadow: rgba(0, 0, 0, 0.05); }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', 'Noto Sans CJK SC', '思源黑体', system-ui, sans-serif; touch-action: manipulation; }
+    header { padding: 20px 24px 12px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+    h1 { font-size: clamp(28px, 8vw, 72px); line-height: 1; margin: 0; font-weight: 500; letter-spacing: -0.02em; }
+    .skin-btn { background: var(--card); border: 1px solid var(--border); border-radius: 60px; padding: 8px 20px; font-size: 0.9rem; cursor: pointer; }
+    .skin-panel { position: fixed; top: 80px; right: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 28px; padding: 18px; width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 1000; display: none; }
+    .skin-panel.show { display: block; }
+    .layout { padding: 16px 20px 40px; max-width: 1600px; margin: 0 auto; }
+    .dashboard { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+    @media (max-width: 780px) { .dashboard { grid-template-columns: 1fr; gap: 24px; } .skin-panel { right: 10px; left: 10px; width: auto; } }
+    .settings-panel { background: var(--card); border: 1px solid var(--border); border-radius: 32px; padding: 20px; display: flex; flex-direction: column; }
+    .quick-themes { margin: 16px 0 0 0; padding: 12px; background: var(--bg); border-radius: 20px; }
+    .quick-themes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .quick-themes-title { font-size: 0.7rem; font-weight: 500; opacity: 0.7; }
+    .refresh-themes-btn { background: none; border: none; font-size: 0.9rem; cursor: pointer; padding: 2px 6px; border-radius: 40px; }
+    .quick-themes-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick-theme-btn { background: var(--card); border: 1px solid var(--border); border-radius: 40px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }
+    .wheel-list-section { margin-top: 16px; }
+    .section-title { font-weight: 500; margin-bottom: 8px; font-size: 0.85rem; }
+    .wheel-list { max-height: 420px; overflow-y: auto; margin-bottom: 12px; }
+    .wheel-list-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 40px; font-size: 0.85rem; border: 1px solid var(--border); margin-bottom: 8px; background: var(--bg); position: relative; cursor: default; }
+    .drag-handle { cursor: grab; font-size: 1.1rem; opacity: 0.5; padding: 0 4px; user-select: none; }
+    .drag-handle:active { cursor: grabbing; }
+    .wheel-list-item .wheel-name-display { flex: 1; cursor: pointer; }
+    .wheel-list-item .wheel-name-input { flex: 1; background: transparent; border: none; font-size: 0.9rem; font-family: inherit; color: var(--text); padding: 4px 0; display: none; }
+    .wheel-list-item.editing .wheel-name-display { display: none; }
+    .wheel-list-item.editing .wheel-name-input { display: block; }
+    .wheel-list-item button { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 0 4px; opacity: 0.6; }
+    .bottom-buttons { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .bottom-buttons button { flex: 1; background: var(--card); border: 1px solid var(--border); }
+    .db-btn-group { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .db-btn { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 40px; padding: 8px 0; font-size: 0.8rem; cursor: pointer; text-align: center; }
+    .share-btn { background: #d4e0d4; border-color: #b8c9b0; }
+    .wheels-grid { display: flex; flex-direction: column; gap: 24px; }
+    .wheel-card { background: var(--card); border: 1px solid var(--border); border-radius: 32px; padding: 20px; position: relative; }
+    .wheel-card .drag-handle-card { position: absolute; top: 20px; left: 20px; cursor: grab; font-size: 1.2rem; opacity: 0.4; z-index: 10; }
+    .wheel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-left: 28px; padding-right: 40px; }
+    .wheel-title { font-size: 1.3rem; font-weight: 520; background: none; border: none; border-bottom: 2px dotted transparent; font-family: inherit; color: var(--text); width: auto; min-width: 120px; padding: 4px 0; cursor: text; flex: 1; }
+    .wheel-title:focus { outline: none; border-bottom-color: var(--accent); }
+    .card-delete-btn { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text); opacity: 0.5; padding: 6px 10px; border-radius: 40px; }
+    .color-toggle-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 60px; padding: 6px 14px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .color-panel { background: var(--bg); border-radius: 20px; padding: 12px; margin-bottom: 16px; border: 1px solid var(--border); display: none; }
+    .color-picker-list { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .color-picker-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .color-picker-item input { width: 50px; height: 40px; border-radius: 12px; border: 2px solid var(--border); cursor: pointer; background: var(--card); }
+    .color-editor-actions { display: flex; gap: 8px; margin-top: 6px; }
+    .add-color-editor-btn, .remove-color-editor-btn { background: var(--card); border: 1px solid var(--border); border-radius: 40px; padding: 4px 12px; font-size: 0.7rem; cursor: pointer; }
+    .remove-color-editor-btn { background: #ffdddd; border-color: #ffaaaa; }
+    .palette-suggest-local { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; margin-bottom: 8px; align-items: center; }
+    .palette-suggest-item { display: flex; gap: 3px; background: var(--bg); padding: 4px 8px; border-radius: 40px; border: 1px solid var(--border); cursor: pointer; font-size: 0.7rem; }
+    .palette-suggest-item .dot { width: 18px; height: 18px; border-radius: 30px; }
+    .refresh-palette-btn { background: none; border: none; font-size: 0.8rem; cursor: pointer; padding: 4px 6px; border-radius: 40px; }
+    .apply-all-btn { font-size: 0.7rem; padding: 4px 8px; background: var(--accent); color: white; border: none; border-radius: 40px; cursor: pointer; }
+    .wheel-visual {
+      display: flex;
+      justify-content: center;
+      margin: 24px 0 16px 0;
+      cursor: pointer;
+      position: relative;
+    }
+    .wheel-container { position: relative; width: min(280px, 70vw); height: min(280px, 70vw); margin: 0 auto; }
+    .pointer-svg {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 20px solid var(--pointer);
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+      z-index: 10;
+    }
+    .wheel-svg-wrapper { width: 100%; height: 100%; }
+    svg { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+    .items-editor { margin-top: 16px; }
+    .tag-input-container { border: 1px solid var(--border); border-radius: 60px; background: var(--bg); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; min-height: 52px; }
+    .tag {
+      background: var(--accent);
+      color: white;
+      border-radius: 40px;
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tag .remove-tag { cursor: pointer; font-size: 0.8rem; opacity: 0.7; }
+    .tag-input { flex: 1; min-width: 80px; background: transparent; border: none; padding: 6px 0; font-size: 0.85rem; outline: none; }
+    .keyword-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; align-items: center; }
+    .keyword-suggest .refresh-suggest-btn { background: none; border: none; font-size: 0.9rem; cursor: pointer; padding: 2px 6px; border-radius: 40px; margin-right: 4px; }
+    .suggest-chip {
+      background: var(--bg);
+      padding: 4px 12px;
+      border-radius: 40px;
+      font-size: 0.7rem;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .result-area { margin-top: 24px; background: var(--card); border-radius: 32px; padding: 20px; border: 1px solid var(--border); }
+    .final-proposition { background: var(--bg); padding: 14px 18px; border-radius: 40px; margin: 12px 0; font-size: clamp(0.85rem, 4vw, 1rem); }
+    button { cursor: pointer; background: var(--card); border: 1px solid var(--border); border-radius: 60px; padding: 8px 16px; font-size: 0.85rem; }
+    button:active { transform: scale(0.97); }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .modal-content { background: var(--card); border-radius: 36px; width: 90%; max-width: 600px; max-height: 80vh; overflow: auto; padding: 24px; border: 1px solid var(--border); }
+    .color-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .global-floating-dropdown { position: fixed; background: var(--card); border: 1px solid var(--border); border-radius: 20px; max-height: 260px; overflow-y: auto; z-index: 10000; list-style: none; margin: 0; padding: 6px 0; box-shadow: 0 12px 28px rgba(0,0,0,0.25); min-width: 180px; display: none; }
+    .global-floating-dropdown li { padding: 10px 14px; cursor: pointer; font-size: 0.85rem; }
+    .empty-state-btn { text-align: center; padding: 40px; color: var(--accent); cursor: pointer; background: var(--card); border: 1px solid var(--border); border-radius: 32px; }
+    .sortable-ghost { opacity: 0.4; background: var(--accent); border: 1px dashed var(--text); }
+    .composite-panel { max-width: 550px; }
+    .composite-search { width: 100%; padding: 8px 12px; border-radius: 40px; border: 1px solid var(--border); margin-bottom: 16px; background: var(--bg); }
+    .composite-list { max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: 20px; padding: 8px; background: var(--bg); }
+    .composite-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin: 4px 0; border-radius: 40px; cursor: pointer; transition: 0.05s; }
+    .composite-item:hover { background: var(--card); }
+    .composite-item.selected { background: var(--accent); color: white; }
+    .composite-item .check { width: 20px; text-align: center; }
+    .selected-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .selected-tag { background: var(--accent); color: white; border-radius: 40px; padding: 4px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; }
+    .selected-tag .remove { cursor: pointer; font-size: 0.9rem; opacity: 0.8; }
+    .history-section { margin-top: 20px; border-top: 1px dashed var(--border); padding-top: 12px; font-size: 0.75rem; }
+    .history-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .history-clear, .history-toggle { background: none; border: 1px solid var(--border); border-radius: 40px; padding: 2px 10px; font-size: 0.7rem; cursor: pointer; }
+    .history-list { display: flex; flex-direction: column; gap: 6px; }
+    .history-item { background: var(--bg); border-radius: 20px; padding: 6px 12px; color: var(--text); opacity: 0.8; word-break: break-word; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>TODAY,<br>WHAT TO DRAW?</h1>
+  <button class="skin-btn" id="skinToggleBtn">🎨 皮肤</button>
+</header>
+<div class="skin-panel" id="skinPanel">
+  <div style="font-weight:600; margin-bottom:12px;">主题配色</div>
+  <div class="color-row"><label>背景</label><input type="color" id="skinBg" value="#f2efe7"></div>
+  <div class="color-row"><label>卡片</label><input type="color" id="skinCard" value="#fefcf8"></div>
+  <div class="color-row"><label>文字</label><input type="color" id="skinText" value="#2a2a28"></div>
+  <div class="color-row"><label>边框</label><input type="color" id="skinBorder" value="#e2dbcf"></div>
+  <div style="display: flex; gap: 8px; margin-top: 12px;">
+    <button id="applySkinBtn" style="flex:1;">✅ 应用并关闭</button>
+    <button id="resetSkinBtn" style="flex:1;">重置默认</button>
+  </div>
+</div>
+<div class="layout">
+  <div class="dashboard">
+    <div class="settings-panel">
+      <h3 style="margin-top:0;">🎨 工坊</h3>
+      <div class="quick-themes">
+        <div class="quick-themes-header">
+          <div class="quick-themes-title">⚡ 快捷主题 <span style="font-size:0.6rem;">点击直接创建转盘</span></div>
+          <button class="refresh-themes-btn" id="refreshThemesBtn">🔄</button>
+        </div>
+        <div class="quick-themes-buttons" id="quickThemesButtons"></div>
+      </div>
+      <div class="wheel-list-section">
+        <div class="section-title">📋 转盘列表（单击编辑）</div>
+        <div id="wheelListPanel" class="wheel-list"></div>
+      </div>
+      <div class="bottom-buttons">
+        <button id="newWheelBtn">✨ 新建转盘</button>
+        <button id="compositeWheelBtn">📦 复合新建</button>
+      </div>
+      <div class="db-btn-group">
+        <div class="db-btn" id="openKeywordLibBtn">📖 关键词库</div>
+        <div class="db-btn" id="openThemeLibBtn">🏷️ 主题库</div>
+        <div class="db-btn share-btn" id="shareUploadBtn">☁️ 共享词库</div>
+      </div>
+      <hr>
+      <div style="display:flex; gap:8px;"><button id="exportDataBtn" style="flex:1">📤 导出</button><button id="importDataBtn" style="flex:1">📥 导入</button></div>
+    </div>
+    <div>
+      <div id="wheelsContainer" class="wheels-grid"></div>
+      <div class="result-area">
+        <div class="result-title">🎲 完整命题</div>
+        <div id="globalProposition" class="final-proposition">🌟 点击「新建转盘」或「快捷主题」开始创作</div>
+        <div style="display: flex; gap: 12px; flex-wrap:wrap;"><button id="spinAllBtn">🎡 抽取所有转盘</button><button id="resetAllWheelsBtn">⟳ 重置角度</button></div>
+        <div id="detailResult" style="margin-top: 12px;"></div>
+        <div class="history-section" id="historySection">
+          <div class="history-header">
+            <span>📜 历史记录（最近10次）</span>
+            <button id="clearHistoryBtn" class="history-clear" title="清空历史">🗑️</button>
+            <button id="toggleHistoryBtn" class="history-toggle" style="display: none;">▼ 展开</button>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- 页脚签名 -->
+  <div style="text-align: center; margin-top: 40px; padding: 16px; font-size: 0.7rem; opacity: 0.5; border-top: 1px solid var(--border);">
+    🎨 @居居居居 制作
+  </div>
+</div>
+<ul id="globalDropdown" class="global-floating-dropdown"></ul>
+
+<script>
+  // ========== 辅助函数 ==========
+  function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
+  function darkenColor(hex, percent = 40) {
+    if (!hex || hex === '#ddd') return '#3a3a35';
+    let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    r = Math.max(0, Math.min(255, r - r*percent/100));
+    g = Math.max(0, Math.min(255, g - g*percent/100));
+    b = Math.max(0, Math.min(255, b - b*percent/100));
+    return '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+  }
+  function randomPastel() { const hue = Math.floor(Math.random()*360); return `hsl(${hue},42%,70%)`; }
+  function parseHashItems(str) { return str.split('#').map(s=>s.trim()).filter(s=>s); }
+  function isPureNumeric(str) { return /^\d+$/.test(str); }
+  
+  function randomDistinct(arr, n) {
+    if (n >= arr.length) return [...arr];
+    const shuffled = [...arr];
+    for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
+    return shuffled.slice(0, n);
+  }
+  
+  function getRadialTextParams(textLen) {
+    if (textLen <= 6) return { fontSize: 14, startRadius: 90, step: -16 };
+    if (textLen <= 9) return { fontSize: 11, startRadius: 95, step: -12 };
+    return { fontSize: 9, startRadius: 100, step: -10 };
+  }
+  
+  function confirmAddToCollection(word, collectionName, addCallback) {
+    if (!word || word.trim() === "") { alert("内容不能为空"); return false; }
+    if (isPureNumeric(word)) { alert("纯数字不能作为" + collectionName); return false; }
+    if (confirm(`确定将「${word}」添加到${collectionName}库吗？`)) {
+      addCallback(word.trim());
+      return true;
+    }
+    return false;
+  }
+  
+  // ========== 数据 ==========
+  let globalKeywordDB = new Set(["少女","精灵","骑士","魔法师","森林","图书馆","海边","星空","机械","花朵","巨龙","机器人","巫婆","城堡","遗迹","浮空岛","蒸汽朋克","赛博朋克","日式庭院","神话生物","烛光","梦境","雨夜","暖阳","复古","未来城市","荒野","海底","甜品","可怕","恐惧"]);
+  let themeDB = new Set(["人物","角色","场景","气氛","情感","色调","生物","建筑","天气","季节","职业","神话","科幻","奇幻","日常","抽象","材质","光影","风格","油画","前缀","后缀","综合"]);
+  
+  let wheelsData = [], nextId = 1, wheelRotations = new Map(), wheelNameCounter = 1;
+  let historyRecords = [];
+  let isHistoryExpanded = false;
+  const MAX_HISTORY = 10;
+  const STORAGE_KEY = 'draw_wheels_final_composite';
+  
+  function saveHistoryToLocal() { localStorage.setItem('draw_history', JSON.stringify(historyRecords)); }
+  function loadHistoryFromLocal() { const stored = localStorage.getItem('draw_history'); if (stored) { try { historyRecords = JSON.parse(stored); } catch(e) {} } }
+  function addHistoryRecord(text) { historyRecords.unshift({ text }); if (historyRecords.length > MAX_HISTORY) historyRecords.pop(); renderHistory(); saveHistoryToLocal(); }
+  function clearHistory() { if (confirm('确定清空所有历史记录吗？')) { historyRecords = []; isHistoryExpanded = false; renderHistory(); saveHistoryToLocal(); } }
+  function renderHistory() {
+    const container = document.getElementById('historyList'); const toggleBtn = document.getElementById('toggleHistoryBtn');
+    if (!container) return;
+    if (historyRecords.length === 0) { container.innerHTML = '<div style="opacity:0.6; padding:8px;">暂无历史记录</div>'; if (toggleBtn) toggleBtn.style.display = 'none'; return; }
+    let displayRecords = [...historyRecords]; const total = displayRecords.length;
+    if (!isHistoryExpanded && total > 3) displayRecords = displayRecords.slice(0, 3);
+    container.innerHTML = displayRecords.map(rec => `<div class="history-item">${escapeHtml(rec.text)}</div>`).join('');
+    if (toggleBtn) { if (total > 3) { toggleBtn.style.display = 'inline-block'; toggleBtn.innerText = isHistoryExpanded ? '▲ 收起' : '▼ 展开'; } else toggleBtn.style.display = 'none'; }
+  }
+  function toggleHistoryExpand() { isHistoryExpanded = !isHistoryExpanded; renderHistory(); }
+  
+  function saveToLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ wheels: wheelsData, nextId, wheelNameCounter, rotations: Array.from(wheelRotations.entries()) })); }
+  function saveKeywordDB() { localStorage.setItem("draw_keyword_db", JSON.stringify(Array.from(globalKeywordDB))); }
+  function saveThemeDB() { localStorage.setItem("draw_theme_db", JSON.stringify(Array.from(themeDB))); }
+  function loadFromLocal() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) try { const s = JSON.parse(raw); if (s.wheels) wheelsData = s.wheels.map(w => ({ ...w, colorPalette: w.colorPalette || [randomPastel()] })); nextId = s.nextId || 1; wheelNameCounter = s.wheelNameCounter || Math.max(1, wheelsData.length + 1); if (s.rotations) s.rotations.forEach(([k, v]) => wheelRotations.set(parseInt(k), v)); } catch(e) {}
+  }
+  function loadKeywordDB() { const raw = localStorage.getItem("draw_keyword_db"); if (raw) try { const arr = JSON.parse(raw); globalKeywordDB = new Set(arr); } catch(e) {} if (globalKeywordDB.size < 20) saveKeywordDB(); }
+  function loadThemeDB() { const raw = localStorage.getItem("draw_theme_db"); if (raw) try { const arr = JSON.parse(raw); themeDB = new Set(arr); } catch(e) {} if (themeDB.size < 10) saveThemeDB(); }
+  
+  function getRandomSuggestionsForWheel(wheelId, excludeWords = []) {
+    let pool = Array.from(globalKeywordDB);
+    if (excludeWords.length) pool = pool.filter(w => !excludeWords.includes(w));
+    const need = 10;
+    if (pool.length <= need) return pool;
+    return randomDistinct(pool, need);
+  }
+  function refreshSuggestionsForWheel(wheelId) {
+    const wheel = wheelsData.find(w => w.id === wheelId);
+    if (!wheel) return;
+    if (!wheel._suggestions) wheel._suggestions = [];
+    const newSuggestions = getRandomSuggestionsForWheel(wheelId, wheel.items || []);
+    wheel._suggestions = newSuggestions;
+    renderAll();
+  }
+  function removeSuggestAndAddNew(wheelId, usedWord) {
+    const wheel = wheelsData.find(w => w.id === wheelId);
+    if (!wheel) return;
+    let sugg = wheel._suggestions || [];
+    sugg = sugg.filter(w => w !== usedWord);
+    let pool = Array.from(globalKeywordDB).filter(w => !sugg.includes(w) && !(wheel.items || []).includes(w));
+    if (pool.length > 0) { const randomNew = pool[Math.floor(Math.random() * pool.length)]; sugg.push(randomNew); }
+    if (sugg.length > 10) sugg = sugg.slice(0,10);
+    wheel._suggestions = sugg;
+    renderAll();
+  }
+  
+  function buildWheelSVG(wheel) {
+    const items = wheel.items || [];
+    if (!items.length) return `<svg viewBox="0 0 260 260"><circle cx="130" cy="130" r="120" fill="#ddd"/><text x="130" y="130" text-anchor="middle">无选项</text></svg>`;
+    const angleStep = 360 / items.length;
+    const sectorColors = getSectorColors(wheel.colorPalette, items.length);
+    let paths = ''; const r = 118, cx = 130, cy = 130;
+    for (let i = 0; i < items.length; i++) {
+      const start = (angleStep * i - 90) * Math.PI / 180, end = (angleStep * (i + 1) - 90) * Math.PI / 180;
+      const x1 = cx + r * Math.cos(start), y1 = cy + r * Math.sin(start), x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end);
+      const large = angleStep > 180 ? 1 : 0;
+      paths += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z" fill="${sectorColors[i]}" stroke="#fff" stroke-width="1.5"/>`;
+    }
+    let texts = '';
+    for (let i = 0; i < items.length; i++) {
+      const label = items[i]; if (!label) continue;
+      const midAngle = (angleStep * i + angleStep / 2 - 90) * Math.PI / 180;
+      const len = label.length, { fontSize, startRadius, step } = getRadialTextParams(len);
+      const chars = label.split('');
+      for (let j = 0; j < chars.length; j++) {
+        const radius = startRadius + j * step; if (radius < 30) continue;
+        const x = cx + radius * Math.cos(midAngle), y = cy + radius * Math.sin(midAngle);
+        const rotAngle = (midAngle * 180 / Math.PI + 90) % 360;
+        texts += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fontSize}" font-weight="500" fill="#1f1f1f" transform="rotate(${rotAngle}, ${x}, ${y})" style="paint-order:stroke; stroke:#fff; stroke-width:0.8px;">${escapeHtml(chars[j])}</text>`;
+      }
+    }
+    return `<svg viewBox="0 0 260 260">${paths}${texts}<circle cx="130" cy="130" r="22" fill="#f0ede5" stroke="#e0dbd0" stroke-width="1"/><circle cx="130" cy="130" r="6" fill="#d6d0c4" opacity="0.4"/></svg>`;
+  }
+  function getSectorColors(palette, count) {
+    let cols = [...(palette||[])]; if (cols.length === 0) cols = [randomPastel()];
+    if (cols.length === 1) return Array(count).fill(cols[0]);
+    if (cols.length === 2) { let res = []; for (let i = 0; i < count; i++) res.push(cols[i % 2]); return res; }
+    let res = []; for (let i = 0; i < count; i++) res.push(cols[i % cols.length]); return res;
+  }
+  function extractInnerSvg(svgStr) { const m = svgStr.match(/<svg[^>]*>([\s\S]*)<\/svg>/); return m ? m[1] : '<circle cx="130" cy="130" r="120" fill="#ccc"/>'; }
+  
+  let spinningSet = new Set();
+  async function spinWheelById(wheelId, skipHistory = false) {
+    const wheel = wheelsData.find(w => w.id === wheelId);
+    if (!wheel || !wheel.items.length) return null;
+    if (spinningSet.has(wheelId)) return null;
+    spinningSet.add(wheelId);
+    const rand = Math.floor(Math.random() * wheel.items.length);
+    const seg = 360 / wheel.items.length;
+    const targetStopAngle = (360 - (rand * seg + seg / 2)) % 360;
+    const g = document.getElementById(`wheelG-${wheelId}`);
+    if (!g) { spinningSet.delete(wheelId); return null; }
+    let currentAngle = (wheelRotations.get(wheelId) || 0) % 360;
+    g.style.transition = 'none'; g.style.transform = `rotate(${currentAngle}deg)`;
+    void g.offsetHeight;
+    let delta = targetStopAngle - currentAngle; if (delta < 0) delta += 360;
+    const FULL_TURNS = 8 * 360;
+    const finalRot = currentAngle + delta + FULL_TURNS;
+    g.style.transition = 'transform 3s cubic-bezier(0.2, 0.9, 0.3, 1.1)';
+    g.style.transform = `rotate(${finalRot}deg)`;
+    await new Promise(r => setTimeout(r, 3100));
+    g.style.transition = ''; g.style.transform = `rotate(${targetStopAngle}deg)`;
+    wheelRotations.set(wheelId, targetStopAngle);
+    spinningSet.delete(wheelId);
+    const selected = wheel.items[rand];
+    document.getElementById('globalProposition').innerHTML = `<strong>🎲 ${wheel.name} → ${selected}</strong>`;
+    document.getElementById('detailResult').innerHTML = `<span class="badge">单抽: ${wheel.name} · ${selected}</span>`;
+    saveToLocal();
+    if (!skipHistory) addHistoryRecord(`🎲 ${wheel.name} → ${selected}`);
+    return { wheel, result: selected };
+  }
+  
+  function createWheel(name, items = []) {
+    const newId = nextId++;
+    const newWheel = { id: newId, name: name, colorPalette: [randomPastel()], items: items };
+    wheelsData.push(newWheel);
+    wheelRotations.set(newId, 0);
+    newWheel._suggestions = getRandomSuggestionsForWheel(newId, items);
+    renderAll();
+    return newId;
+  }
+  function updateWheelName(id, newName) {
+    const w = wheelsData.find(w => w.id === id); if (!w || !newName.trim()) return;
+    w.name = newName.trim(); renderAll();
+    if (!themeDB.has(newName.trim())) confirmAddToCollection(newName.trim(), "主题", (word) => { themeDB.add(word); saveThemeDB(); renderAll(); });
+  }
+  function deleteWheel(id) { if (confirm("确定删除这个转盘吗？")) { wheelsData = wheelsData.filter(w => w.id !== id); wheelRotations.delete(id); renderAll(); } }
+  function addKeywordToWheel(wid, word) {
+    const w = wheelsData.find(w => w.id === wid); if (!w) return;
+    if (!w.items.includes(word)) { w.items.push(word); renderAll(); }
+    if (!globalKeywordDB.has(word)) confirmAddToCollection(word, "关键词", (addedWord) => { globalKeywordDB.add(addedWord); saveKeywordDB(); renderAll(); });
+    else { if (w._suggestions && w._suggestions.includes(word)) removeSuggestAndAddNew(wid, word); else renderAll(); }
+  }
+  function removeKeywordFromWheel(wid, word) { const w = wheelsData.find(w => w.id === wid); if (w && w.items.includes(word)) { w.items = w.items.filter(item => item !== word); renderAll(); } }
+  function updateWheelColorPalette(wid, newPalette) { const w = wheelsData.find(w => w.id === wid); if (w && newPalette.length > 0) { w.colorPalette = newPalette.slice(0, 3); renderAll(); } }
+  function applyPaletteToAll(sourcePalette) { wheelsData.forEach(w => { w.colorPalette = [...sourcePalette]; }); renderAll(); }
+  
+  function openCompositeModal() {
+    let selectedThemes = [], filterText = '';
+    const modal = document.createElement('div'); modal.className = 'modal';
+    const render = () => {
+      const allThemes = Array.from(themeDB).sort();
+      const filtered = allThemes.filter(t => t.includes(filterText));
+      const listHtml = filtered.map(t => `<div class="composite-item" data-theme="${escapeHtml(t)}"><span class="check">${selectedThemes.includes(t) ? '✅' : '○'}</span><span>${escapeHtml(t)}</span></div>`).join('');
+      document.getElementById('compositeList').innerHTML = listHtml || '<div style="padding:20px;">暂无主题</div>';
+      document.querySelectorAll('.composite-item').forEach(item => {
+        item.addEventListener('click', () => { const theme = item.dataset.theme;
+          if (selectedThemes.includes(theme)) selectedThemes = selectedThemes.filter(t => t !== theme);
+          else { if (selectedThemes.length < 3) selectedThemes.push(theme); else alert("最多选择3个主题词"); }
+          renderSelectedTags(); render();
+        });
+      });
+    };
+    const renderSelectedTags = () => {
+      const container = document.getElementById('selectedTagsContainer');
+      if (!container) return;
+      if (selectedThemes.length === 0) { container.innerHTML = '<div style="color:#888; font-size:0.8rem;">尚未选择任何主题词</div>'; return; }
+      container.innerHTML = selectedThemes.map(t => `<span class="selected-tag">${escapeHtml(t)}<span class="remove" data-theme="${escapeHtml(t)}">✕</span></span>`).join('');
+      container.querySelectorAll('.remove').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const theme = btn.dataset.theme; selectedThemes = selectedThemes.filter(t => t !== theme); renderSelectedTags(); render(); }); });
+    };
+    modal.innerHTML = `<div class="modal-content composite-panel"><h3>📦 复合主题新建转盘</h3><div class="selected-tags" id="selectedTagsContainer"></div><input type="text" id="compositeSearch" class="composite-search" placeholder="搜索主题词... (输入新词后按回车添加至主题库)"><div id="compositeList" class="composite-list"></div><div style="display:flex; gap:12px; margin-top:20px;"><button id="confirmComposite" style="flex:1;">✅ 创建转盘</button><button id="cancelComposite" style="flex:1;">取消</button></div></div>`;
+    document.body.appendChild(modal);
+    const searchInput = modal.querySelector('#compositeSearch');
+    searchInput.addEventListener('input', (e) => {
+      filterText = e.target.value;
+      render();
+    });
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const newTheme = searchInput.value.trim();
+        if (newTheme && !themeDB.has(newTheme)) {
+          confirmAddToCollection(newTheme, "主题", (word) => {
+            themeDB.add(word);
+            saveThemeDB();
+            render();
+          });
+        } else if (newTheme && themeDB.has(newTheme)) {
+          alert("主题已存在");
+        } else if (!newTheme) {
+          alert("请输入主题词");
+        }
+      }
+    });
+    modal.querySelector('#confirmComposite').addEventListener('click', () => { if (selectedThemes.length === 0) { alert("请至少选择一个主题词"); return; } const wheelName = selectedThemes.join(' • '); createWheel(wheelName, []); modal.remove(); });
+    modal.querySelector('#cancelComposite').addEventListener('click', () => modal.remove());
+    render(); renderSelectedTags();
+  }
+  
+  function openKeywordEditor() {
+    let filterText = ''; const modal = document.createElement('div'); modal.className = 'modal'; let searchInput = null;
+    const renderList = () => {
+      const filtered = Array.from(globalKeywordDB).filter(k => k.includes(filterText)).sort();
+      const listHtml = filtered.map(k => `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);"><span>${escapeHtml(k)}</span><div><button class="kw-add-to-wheel" data-word="${escapeHtml(k)}" style="margin-right:8px;">➕ 添加到转盘</button><button class="kw-del" data-word="${escapeHtml(k)}">删除</button></div></div>`).join('');
+      document.getElementById('kwListContainer').innerHTML = listHtml || '<div style="padding:20px;">暂无关键词</div>';
+      document.querySelectorAll('.kw-del').forEach(btn => btn.addEventListener('click', () => { if (confirm('删除关键词？')) { globalKeywordDB.delete(btn.dataset.word); saveKeywordDB(); renderList(); } }));
+      document.querySelectorAll('.kw-add-to-wheel').forEach(btn => { btn.addEventListener('click', () => { const word = btn.dataset.word; if (wheelsData.length === 0) { alert("请先创建转盘"); return; } const selectModal = document.createElement('div'); selectModal.className = 'modal'; selectModal.innerHTML = `<div class="modal-content"><h3>选择转盘</h3>${wheelsData.map(w => `<button class="select-wheel-btn" data-id="${w.id}" style="display:block; width:100%; margin:8px 0; padding:10px;">${escapeHtml(w.name)}</button>`).join('')}<button id="closeSelect">取消</button></div>`; document.body.appendChild(selectModal); selectModal.querySelectorAll('.select-wheel-btn').forEach(btn2 => { btn2.addEventListener('click', () => { const wid = parseInt(btn2.dataset.id); const wheel = wheelsData.find(w => w.id === wid); if (wheel && !wheel.items.includes(word)) { wheel.items.push(word); renderAll(); alert(`已添加到「${wheel.name}」`); } else if (wheel) alert("已有此词"); selectModal.remove(); }); }); selectModal.querySelector('#closeSelect')?.addEventListener('click', () => selectModal.remove()); }); });
+    };
+    modal.innerHTML = `<div class="modal-content"><h3>📚 关键词库 (${globalKeywordDB.size})</h3><input type="text" id="kwSearchInput" placeholder="搜索或输入新词，按回车添加..." style="width:100%; padding:8px; border-radius:40px; margin:12px 0; border:1px solid var(--border);"><div id="kwListContainer" style="max-height:300px; overflow-y:auto; margin-bottom:16px;"></div><div style="display:flex; gap:8px;"><button id="kwAddNew">➕ 新增关键词</button><button id="closeKwModal">关闭</button></div></div>`;
+    document.body.appendChild(modal);
+    searchInput = modal.querySelector('#kwSearchInput');
+    const addKeywordHandler = () => { const newWord = searchInput.value.trim(); if (newWord && !globalKeywordDB.has(newWord)) confirmAddToCollection(newWord, "关键词", (word) => { globalKeywordDB.add(word); saveKeywordDB(); renderList(); }); else if (newWord && globalKeywordDB.has(newWord)) alert("关键词已存在"); else if (!newWord) alert("请输入关键词"); };
+    searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addKeywordHandler(); } });
+    modal.querySelector('#kwAddNew').addEventListener('click', addKeywordHandler);
+    modal.querySelector('#closeKwModal').addEventListener('click', () => modal.remove());
+    renderList();
+  }
+  function openThemeEditor() {
+    let filterText = ''; const modal = document.createElement('div'); modal.className = 'modal'; let searchInput = null;
+    const renderList = () => {
+      const filtered = Array.from(themeDB).filter(t => t.includes(filterText)).sort();
+      const listHtml = filtered.map(t => `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);"><span>${escapeHtml(t)}</span><div><button class="theme-use" data-theme="${escapeHtml(t)}" style="margin-right:8px;">✨ 新建转盘</button><button class="theme-del" data-theme="${escapeHtml(t)}">删除</button></div></div>`).join('');
+      document.getElementById('themeListContainer').innerHTML = listHtml || '<div style="padding:20px;">暂无主题</div>';
+      document.querySelectorAll('.theme-del').forEach(btn => btn.addEventListener('click', () => { if (confirm('删除主题？')) { themeDB.delete(btn.dataset.theme); saveThemeDB(); renderList(); } }));
+      document.querySelectorAll('.theme-use').forEach(btn => btn.addEventListener('click', () => { createWheel(btn.dataset.theme, []); modal.remove(); }));
+    };
+    modal.innerHTML = `<div class="modal-content"><h3>🏷️ 主题库 (${themeDB.size})</h3><input type="text" id="themeSearchInput" placeholder="搜索或输入新词，按回车添加..." style="width:100%; padding:8px; border-radius:40px; margin:12px 0; border:1px solid var(--border);"><div id="themeListContainer" style="max-height:300px; overflow-y:auto; margin-bottom:16px;"></div><div style="display:flex; gap:8px;"><button id="themeAddNew">➕ 新增主题</button><button id="closeThemeModal">关闭</button></div></div>`;
+    document.body.appendChild(modal);
+    searchInput = modal.querySelector('#themeSearchInput');
+    const addThemeHandler = () => { const newTheme = searchInput.value.trim(); if (newTheme && !themeDB.has(newTheme)) confirmAddToCollection(newTheme, "主题", (word) => { themeDB.add(word); saveThemeDB(); renderList(); }); else if (newTheme && themeDB.has(newTheme)) alert("主题已存在"); else if (!newTheme) alert("请输入主题"); };
+    searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addThemeHandler(); } });
+    modal.querySelector('#themeAddNew').addEventListener('click', addThemeHandler);
+    modal.querySelector('#closeThemeModal').addEventListener('click', () => modal.remove());
+    renderList();
+  }
+  
+  function renderAll() { renderWheels(); renderWheelList(); renderQuickThemes(); saveToLocal(); initSortable(); }
+  function renderWheels() {
+    const container = document.getElementById('wheelsContainer');
+    if (!container) return;
+    if (wheelsData.length === 0) { container.innerHTML = '<div class="empty-state-btn" id="emptyStateNewWheel">✨ 点击「新建转盘」开始创作</div>'; const emptyBtn = document.getElementById('emptyStateNewWheel'); if (emptyBtn) emptyBtn.onclick = () => createWheel(`新转盘${wheelNameCounter++}`); return; }
+    let html = '';
+    for (let w of wheelsData) {
+      if (!w._suggestions) w._suggestions = getRandomSuggestionsForWheel(w.id, w.items || []);
+      const svgRaw = buildWheelSVG(w), palette = w.colorPalette || [randomPastel()];
+      let colorPickersHtml = '';
+      for (let i = 0; i < Math.min(3, palette.length); i++) colorPickersHtml += `<div class="color-picker-item"><input type="color" class="custom-color-picker" data-wheel="${w.id}" data-idx="${i}" value="${palette[i]}"><span>色${i+1}</span></div>`;
+      for (let i = palette.length; i < 3; i++) colorPickersHtml += `<div class="color-picker-item"><input type="color" class="custom-color-picker" data-wheel="${w.id}" data-idx="${i}" value="#dddddd" style="opacity:0.5;"><span>色${i+1}</span></div>`;
+      const paletteSuggestions = getRandomPaletteSuggestions();
+      const suggestHtml = paletteSuggestions.map(preset => `<div class="palette-suggest-item" data-wheel="${w.id}" data-preset='${JSON.stringify(preset.colors)}'>${preset.colors.map(c=>`<div class="dot" style="background:${c};"></div>`).join('')}<span style="font-size:0.65rem;">${preset.name}</span></div>`).join('');
+      const tagsHtml = (w.items || []).map(item => `<span class="tag" data-value="${escapeHtml(item)}">${escapeHtml(item)}<span class="remove-tag" data-value="${escapeHtml(item)}">✕</span></span>`).join('');
+      const suggestKeywords = w._suggestions.slice(0, 10);
+      html += `<div class="wheel-card" data-wheel-id="${w.id}"><div class="drag-handle-card">⋮⋮</div><button class="card-delete-btn" data-wheel="${w.id}">🗑️</button><div class="wheel-header"><input class="wheel-title" value="${escapeHtml(w.name)}" data-wheel="${w.id}" placeholder="转盘名称"></div><button class="color-toggle-btn" data-wheel="${w.id}">🎨 自定义颜色</button><div class="color-panel" data-color-panel="${w.id}" style="display:none;"><div class="color-picker-list" data-wheel="${w.id}">${colorPickersHtml}</div><div class="color-editor-actions"><button class="add-color-editor-btn" data-wheel="${w.id}" ${palette.length>=3?'disabled':''}>➕ 增加颜色</button><button class="remove-color-editor-btn" data-wheel="${w.id}" ${palette.length<=1?'disabled':''}>➖ 删除最后颜色</button></div></div><div class="palette-suggest-local">${suggestHtml}<button class="refresh-palette-btn" data-wheel="${w.id}">🔄</button><button class="apply-all-btn" data-wheel="${w.id}">✨ 统一设置</button></div><div class="wheel-visual" data-spin="${w.id}"><div class="wheel-container"><div class="pointer-svg"></div><div class="wheel-svg-wrapper"><svg viewBox="0 0 260 260"><g id="wheelG-${w.id}" style="transform-origin:130px 130px; transform:rotate(${wheelRotations.get(w.id)||0}deg);">${extractInnerSvg(svgRaw)}</g></svg></div></div></div><div class="items-editor"><div class="tag-input-container" data-wheel="${w.id}">${tagsHtml}<input type="text" class="tag-input" data-wheel="${w.id}" placeholder="输入关键词后按回车..." autocomplete="off"></div><div class="keyword-suggest"><button class="refresh-suggest-btn" data-wheel="${w.id}" title="刷新推荐词">🔄</button>${suggestKeywords.map(k=>`<span class="suggest-chip" data-wheel="${w.id}" data-word="${escapeHtml(k)}">${escapeHtml(k)}</span>`).join('')}<span class="suggest-chip" data-wheel="${w.id}" data-word="✨+自填">+ 新词入库</span></div></div></div>`;
+    }
+    container.innerHTML = html;
+  }
+  function renderWheelList() {
+    const panel = document.getElementById('wheelListPanel');
+    if (!panel) return;
+    if (wheelsData.length === 0) { panel.innerHTML = '<div style="text-align:center; padding:20px;">暂无转盘</div>'; return; }
+    panel.innerHTML = wheelsData.map(w => `<div class="wheel-list-item" data-wheel-id="${w.id}">
+      <span class="drag-handle">⋮⋮</span>
+      <span class="wheel-name-display">🎨 ${escapeHtml(w.name)}</span>
+      <input class="wheel-name-input" value="${escapeHtml(w.name)}" data-wheel="${w.id}" autocomplete="off">
+      <button class="wheel-list-del" data-wheel="${w.id}">🗑️</button>
+    </div>`).join('');
+    // 直接绑定删除按钮事件（修复删除无效）
+    panel.querySelectorAll('.wheel-list-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wid = parseInt(btn.dataset.wheel);
+        deleteWheel(wid);
+      });
+    });
+  }
+  function renderQuickThemes() {
+    const container = document.getElementById('quickThemesButtons'); if (!container) return;
+    const themes = Array.from(themeDB); const shuffled = [...themes];
+    for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
+    const selected = shuffled.slice(0, 8);
+    container.innerHTML = selected.map(t => `<button class="quick-theme-btn" data-theme="${escapeHtml(t)}">✨ ${escapeHtml(t)}</button>`).join('');
+  }
+  
+  const FULL_PALETTE_SUGGESTIONS = [ { name:"单色·森绿", colors:["#b8c9b0"] }, { name:"单色·暖米", colors:["#e2d5c0"] }, { name:"单色·雾蓝", colors:["#c0d0d4"] }, { name:"单色·淡粉", colors:["#f0d9da"] }, { name:"单色·枯茶", colors:["#d4c4b0"] }, { name:"单色·石墨", colors:["#a8b2b8"] }, { name:"双色·森系", colors:["#b8c9b0","#d7c9aa"] }, { name:"双色·海风", colors:["#c0d0d4","#b9cfd1"] }, { name:"双色·暖茶", colors:["#e8cfc6","#d9bcb0"] }, { name:"双色·紫藤", colors:["#cbb8d4","#d8cce4"] }, { name:"双色·柑橘", colors:["#f2cf9e","#e8ba6e"] }, { name:"双色·薄荷", colors:["#b8d9c6","#9dc4b0"] }, { name:"三色·油画", colors:["#b8c9b0","#d7c9aa","#c2b2a3"] }, { name:"三色·水彩", colors:["#c0d0d4","#b9cfd1","#aac7bf"] }, { name:"三色·日落", colors:["#f2cf9e","#e8ba6e","#d49c6c"] }, { name:"三色·深海", colors:["#8dabbf","#6c8ead","#4e6f8a"] }, { name:"三色·暮色", colors:["#b7a9c4","#d4c4e0","#c2b2d0"] }, { name:"三色·秋叶", colors:["#e8b88a","#d49c6c","#c17a4a"] }, { name:"三色·晨雾", colors:["#d4e0d4","#c2d4c2","#b0c4b0"] }, { name:"三色·浆果", colors:["#e8c4c4","#d4a4a4","#c08484"] }, { name:"三色·沙漠", colors:["#e8d4b8","#d4c4a4","#c0b090"] }, { name:"三色·极光", colors:["#a4d4c4","#88c4b0","#6cb4a0"] }, { name:"三色·星空", colors:["#4a6a8a","#3a5a7a","#2a4a6a"] }, { name:"三色·珊瑚", colors:["#f0b4a4","#e8a494","#d89484"] } ];
+  function getRandomPaletteSuggestions() { const shuffled = [...FULL_PALETTE_SUGGESTIONS]; for (let i=shuffled.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; } return shuffled.slice(0,6); }
+  function refreshWheelPalette(wheelId) { const wheelCard = document.querySelector(`.wheel-card[data-wheel-id="${wheelId}"]`); if (!wheelCard) return; const paletteSuggestions = getRandomPaletteSuggestions(); const suggestHtml = paletteSuggestions.map(preset=>`<div class="palette-suggest-item" data-wheel="${wheelId}" data-preset='${JSON.stringify(preset.colors)}'>${preset.colors.map(c=>`<div class="dot" style="background:${c};"></div>`).join('')}<span style="font-size:0.65rem;">${preset.name}</span></div>`).join(''); const container = wheelCard.querySelector('.palette-suggest-local'); if (container) { const refreshBtn = container.querySelector('.refresh-palette-btn'); const applyBtn = container.querySelector('.apply-all-btn'); container.innerHTML = suggestHtml; container.appendChild(refreshBtn); container.appendChild(applyBtn); container.querySelectorAll('.palette-suggest-item').forEach(item => { item.addEventListener('click', (e) => { const wid = parseInt(item.dataset.wheel); const presetColors = JSON.parse(item.dataset.preset); const wheel = wheelsData.find(w => w.id === wid); if (wheel) { wheel.colorPalette = presetColors; renderAll(); } }); }); } }
+  
+  let leftSortable, rightSortable;
+  function initSortable() {
+    const leftContainer = document.getElementById('wheelListPanel'), rightContainer = document.getElementById('wheelsContainer');
+    if (leftContainer && !leftSortable) leftSortable = new Sortable(leftContainer, { handle: '.drag-handle', animation: 200, ghostClass: 'sortable-ghost', onEnd: () => { const newOrder = Array.from(leftContainer.querySelectorAll('.wheel-list-item')).map(el => parseInt(el.dataset.wheelId)); const newWheels = []; for (let id of newOrder) { const wheel = wheelsData.find(w => w.id === id); if (wheel) newWheels.push(wheel); } if (newWheels.length === wheelsData.length) { wheelsData = newWheels; saveToLocal(); renderAll(); } } });
+    if (rightContainer && !rightSortable) rightSortable = new Sortable(rightContainer, { handle: '.drag-handle-card', animation: 200, ghostClass: 'sortable-ghost', onEnd: () => { const newOrder = Array.from(rightContainer.querySelectorAll('.wheel-card')).map(el => parseInt(el.dataset.wheelId)); const newWheels = []; for (let id of newOrder) { const wheel = wheelsData.find(w => w.id === id); if (wheel) newWheels.push(wheel); } if (newWheels.length === wheelsData.length) { wheelsData = newWheels; saveToLocal(); renderAll(); } } });
+  }
+  
+  let activeDropdownInput = null, activeDropdownType = null, activeDropdownCallback = null;
+  let isBlurPending = false;
+  function showDropdown(input, suggestions, onSelect, type, retryOnFail) {
+    const dd = document.getElementById('globalDropdown');
+    if (!dd) return;
+    if (!suggestions.length) { dd.style.display = 'none'; return; }
+    const rect = input.getBoundingClientRect();
+    if ((rect.width === 0 || rect.height === 0) && retryOnFail) {
+      setTimeout(() => { showDropdown(input, suggestions, onSelect, type, false); }, 100);
+      return;
+    }
+    dd.innerHTML = suggestions.map(s => `<li data-value="${escapeHtml(s)}">✨ ${escapeHtml(s)}</li>`).join('');
+    dd.style.top = (rect.bottom + 4) + 'px';
+    dd.style.left = rect.left + 'px';
+    dd.style.width = Math.max(rect.width, 180) + 'px';
+    dd.style.display = 'block';
+    activeDropdownInput = input;
+    activeDropdownType = type;
+    activeDropdownCallback = onSelect;
+    const handler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const val = e.currentTarget.dataset.value;
+      if (activeDropdownCallback) {
+        isBlurPending = false;
+        activeDropdownCallback(val);
+      }
+      hideDropdown();
+    };
+    const lis = dd.querySelectorAll('li');
+    lis.forEach(li => {
+      li.removeEventListener('click', handler);
+      li.removeEventListener('touchstart', handler);
+      li.addEventListener('click', handler);
+      li.addEventListener('touchstart', handler, { passive: false });
+    });
+  }
+  function hideDropdown() { const dd = document.getElementById('globalDropdown'); if (dd) dd.style.display = 'none'; activeDropdownInput = null; activeDropdownType = null; activeDropdownCallback = null; }
+  function updateDropdownContent(suggestions) {
+    const dd = document.getElementById('globalDropdown');
+    if (!dd || dd.style.display !== 'block') return;
+    if (!suggestions.length) { dd.style.display = 'none'; return; }
+    const active = activeDropdownInput;
+    if (!active) return;
+    const rect = active.getBoundingClientRect();
+    dd.innerHTML = suggestions.map(s => `<li data-value="${escapeHtml(s)}">✨ ${escapeHtml(s)}</li>`).join('');
+    dd.style.top = (rect.bottom + 4) + 'px';
+    dd.style.left = rect.left + 'px';
+    dd.style.width = Math.max(rect.width, 180) + 'px';
+    const handler = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const val = e.currentTarget.dataset.value;
+      if (activeDropdownCallback) {
+        isBlurPending = false;
+        activeDropdownCallback(val);
+      }
+      hideDropdown();
+    };
+    const lis = dd.querySelectorAll('li');
+    lis.forEach(li => {
+      li.removeEventListener('click', handler);
+      li.removeEventListener('touchstart', handler);
+      li.addEventListener('click', handler);
+      li.addEventListener('touchstart', handler, { passive: false });
+    });
+  }
+  
+  async function spinAll() {
+    if (wheelsData.length === 0) { alert("请先创建转盘"); return; }
+    const btn = document.getElementById('spinAllBtn');
+    btn.disabled = true; btn.innerText = '🎲 抽取中...';
+    const results = [];
+    for (let w of wheelsData) {
+      if (w.items.length && !spinningSet.has(w.id)) { const res = await spinWheelById(w.id, true); if (res && res.result) results.push(res.result); }
+      await new Promise(r => setTimeout(r, 150));
+    }
+    if (results.length > 0) { const combination = results.join(' + '); addHistoryRecord(`🎨 组合：${combination}`); document.getElementById('globalProposition').innerHTML = `<strong>🎨 ${combination}</strong>`; document.getElementById('detailResult').innerHTML = `<div class="badge-chain">${results.map(r => `<span class="badge">${r}</span>`).join('')}</div>`; }
+    else document.getElementById('globalProposition').innerHTML = `<strong>⚠️ 没有可抽取的选项</strong>`;
+    btn.disabled = false; btn.innerText = '🎡 抽取所有转盘';
+  }
+  function resetAngles() { wheelsData.forEach(w => { wheelRotations.set(w.id, 0); const g = document.getElementById(`wheelG-${w.id}`); if (g) { g.style.transition = '0.3s'; g.style.transform = 'rotate(0deg)'; setTimeout(() => { if (g) g.style.transition = ''; }, 400); } }); saveToLocal(); document.getElementById('globalProposition').innerHTML = '<strong>🌟 角度已重置</strong>'; }
+  function setCssVar(varName, value) { document.documentElement.style.setProperty(varName, value); saveToLocal(); }
+  function exportSharedDatabase() { alert("导出共享词库（本功能可自行扩展）"); }
+  function importSharedDatabase() { alert("导入共享词库（本功能可自行扩展）"); }
+  function setupGlobalUI() {
+    document.getElementById('spinAllBtn')?.addEventListener('click', spinAll);
+    document.getElementById('resetAllWheelsBtn')?.addEventListener('click', resetAngles);
+    document.getElementById('shareUploadBtn')?.addEventListener('click', () => { if (confirm("确定→导出本地词库\n取消→导入他人词库")) exportSharedDatabase(); else importSharedDatabase(); });
+    document.getElementById('exportDataBtn')?.addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({ wheels: wheelsData, nextId, wheelNameCounter, rotations: Array.from(wheelRotations.entries()), keywordDB: Array.from(globalKeywordDB), themeDB: Array.from(themeDB) })], { type: 'application/json' })); a.download = 'wheels.json'; a.click(); });
+    document.getElementById('importDataBtn')?.addEventListener('click', () => { const inp = document.createElement('input'); inp.type = 'file'; inp.onchange = e => { const f = e.target.files[0]; if (!f) return; const reader = new FileReader(); reader.onload = ev => { try { const d = JSON.parse(ev.target.result); if (d.wheels) wheelsData = d.wheels; if (d.nextId) nextId = d.nextId; if (d.wheelNameCounter) wheelNameCounter = d.wheelNameCounter; if (d.rotations) { wheelRotations.clear(); d.rotations.forEach(([k, v]) => wheelRotations.set(parseInt(k), v)); } if (d.keywordDB) globalKeywordDB = new Set(d.keywordDB); if (d.themeDB) themeDB = new Set(d.themeDB); saveKeywordDB(); saveThemeDB(); renderAll(); alert("导入成功"); } catch (err) { alert("失败"); } }; reader.readAsText(f); }; inp.click(); });
+    const skinBtn = document.getElementById('skinToggleBtn'), skinPanel = document.getElementById('skinPanel');
+    skinBtn?.addEventListener('click', () => skinPanel.classList.toggle('show'));
+    document.getElementById('skinBg')?.addEventListener('input', e => setCssVar('--bg', e.target.value));
+    document.getElementById('skinCard')?.addEventListener('input', e => setCssVar('--card', e.target.value));
+    document.getElementById('skinText')?.addEventListener('input', e => setCssVar('--text', e.target.value));
+    document.getElementById('skinBorder')?.addEventListener('input', e => setCssVar('--border', e.target.value));
+    document.getElementById('clearHistoryBtn')?.addEventListener('click', clearHistory);
+    document.getElementById('toggleHistoryBtn')?.addEventListener('click', toggleHistoryExpand);
+  }
+  
+  function bindGlobalEvents() {
+    document.getElementById('applySkinBtn')?.addEventListener('click', () => { document.getElementById('skinPanel').classList.remove('show'); alert('配色已保存'); });
+    document.getElementById('resetSkinBtn')?.addEventListener('click', () => { setCssVar('--bg','#f2efe7'); setCssVar('--card','#fefcf8'); setCssVar('--text','#2a2a28'); setCssVar('--border','#e2dbcf'); document.getElementById('skinBg').value='#f2efe7'; document.getElementById('skinCard').value='#fefcf8'; document.getElementById('skinText').value='#2a2a28'; document.getElementById('skinBorder').value='#e2dbcf'; });
+    
+    // 右侧转盘标题编辑（实时下拉 + 回车保存 + 失焦保存 + 新词入库）
+    // 辅助保存函数
+    function saveWheelTitle(input) {
+      const wid = parseInt(input.dataset.wheel);
+      const newName = input.value.trim();
+      if (newName) {
+        updateWheelName(wid, newName);
+      }
+      hideDropdown();
+    }
+    // 点击时显示下拉
+    document.addEventListener('click', e => {
+      const title = e.target.closest('.wheel-title');
+      if (title) {
+        e.stopPropagation();
+        const input = title;
+        const suggestions = Array.from(themeDB).filter(t => t.includes(input.value)).slice(0,15);
+        if (suggestions.length) showDropdown(input, suggestions, (val) => {
+          input.value = val;
+          saveWheelTitle(input);
+        }, 'theme');
+        else hideDropdown();
+      }
+    });
+    // 输入时实时筛选
+    document.addEventListener('input', e => {
+      const title = e.target.closest('.wheel-title');
+      if (!title) return;
+      const input = title;
+      const val = input.value;
+      const filtered = Array.from(themeDB).filter(t => t.includes(val)).slice(0,15);
+      if (activeDropdownInput === input && activeDropdownType === 'theme') {
+        updateDropdownContent(filtered);
+      } else if (filtered.length) {
+        showDropdown(input, filtered, (v) => {
+          input.value = v;
+          saveWheelTitle(input);
+        }, 'theme');
+      } else {
+        hideDropdown();
+      }
+    });
+    // 回车保存
+    document.addEventListener('keypress', e => {
+      const title = e.target.closest('.wheel-title');
+      if (title && e.key === 'Enter') {
+        e.preventDefault();
+        const input = title;
+        saveWheelTitle(input);
+        input.blur();
+      }
+    });
+    // 失焦保存（延迟避免与下拉点击冲突）
+    document.addEventListener('blur', e => {
+      const title = e.target.closest('.wheel-title');
+      if (!title) return;
+      const input = title;
+      // 延迟执行，给下拉点击处理留出时间
+      setTimeout(() => {
+        // 检查是否已经因为下拉点击而更新过了（可通过值是否变化简单判断）
+        const wid = parseInt(input.dataset.wheel);
+        const currentWheel = wheelsData.find(w => w.id === wid);
+        if (currentWheel && currentWheel.name !== input.value.trim()) {
+          saveWheelTitle(input);
+        }
+      }, 150);
+    }, true);
+    
+    document.addEventListener('click', e => { const del = e.target.closest('.card-delete-btn'); if (del) { e.stopPropagation(); const wid = parseInt(del.dataset.wheel); deleteWheel(wid); } });
+    
+    document.addEventListener('click', e => { const tagInput = e.target.closest('.tag-input'); if (tagInput) { e.stopPropagation(); const input = tagInput, wid = parseInt(input.dataset.wheel), suggestions = Array.from(globalKeywordDB).filter(k => k.includes(input.value)).slice(0,15); if (suggestions.length) showDropdown(input, suggestions, (v) => { addKeywordToWheel(wid, v); input.value = ''; }, 'keyword'); } });
+    document.addEventListener('input', e => { const tagInput = e.target.closest('.tag-input'); if (tagInput) { const input = tagInput, wid = parseInt(input.dataset.wheel), val = input.value, filtered = Array.from(globalKeywordDB).filter(k => k.includes(val)).slice(0,15); if (activeDropdownInput === input && activeDropdownType === 'keyword') updateDropdownContent(filtered); else if (filtered.length) showDropdown(input, filtered, (v) => { addKeywordToWheel(wid, v); input.value = ''; }, 'keyword'); else hideDropdown(); } });
+    document.addEventListener('keypress', e => { const tagInput = e.target.closest('.tag-input'); if (tagInput && e.key === 'Enter') { e.preventDefault(); const input = tagInput, wid = parseInt(input.dataset.wheel), word = input.value.trim(); if (word) { addKeywordToWheel(wid, word); input.value = ''; } hideDropdown(); } });
+    document.addEventListener('click', e => { const remove = e.target.closest('.remove-tag'); if (remove) { e.stopPropagation(); const tag = remove.closest('.tag'), word = tag.dataset.value, container = tag.closest('.tag-input-container'), wid = parseInt(container.dataset.wheel); removeKeywordFromWheel(wid, word); } });
+    document.addEventListener('click', e => { const chip = e.target.closest('.suggest-chip'); if (chip) { const wid = parseInt(chip.dataset.wheel), word = chip.dataset.word; if (word === "✨+自填") { let nw = prompt("输入新关键词"); if (nw && !isPureNumeric(nw)) addKeywordToWheel(wid, nw); else if (nw && isPureNumeric(nw)) alert("纯数字不能作为关键词"); } else { addKeywordToWheel(wid, word); } } });
+    document.addEventListener('click', e => { const refreshBtn = e.target.closest('.refresh-suggest-btn'); if (refreshBtn) { e.stopPropagation(); const wid = parseInt(refreshBtn.dataset.wheel); refreshSuggestionsForWheel(wid); } });
+    
+    // 左侧列表编辑（移动端优化 + 初始下拉修复）
+    function isDefaultNewWheelName(name) { return /^新转盘\d+$/.test(name); }
+    
+    function enterEditMode(item, wheelId, currentName) {
+      document.querySelectorAll('.wheel-list-item').forEach(i => i.classList.remove('editing'));
+      item.classList.add('editing');
+      const editInput = item.querySelector('.wheel-name-input');
+      if (!editInput) return;
+      if (isDefaultNewWheelName(currentName)) {
+        editInput.value = '';
+      } else {
+        editInput.value = currentName;
+      }
+      editInput.focus();
+      const len = editInput.value.length;
+      editInput.setSelectionRange(len, len);
+      setTimeout(() => {
+        if (!item.classList.contains('editing')) return;
+        const filterValue = editInput.value;
+        const filtered = Array.from(themeDB).filter(t => t.includes(filterValue)).slice(0, 15);
+        if (filtered.length) {
+          showDropdown(editInput, filtered, (selectedVal) => {
+            editInput.value = selectedVal;
+            updateWheelName(wheelId, selectedVal);
+            hideDropdown();
+            item.classList.remove('editing');
+          }, 'theme', true);
+        } else {
+          hideDropdown();
+        }
+      }, 150);
+    }
+    
+    function exitAndSave(editInput, wheelId, item, newName) {
+      if (newName.trim()) updateWheelName(wheelId, newName.trim());
+      else { const wheel = wheelsData.find(w => w.id === wheelId); if (wheel) editInput.value = wheel.name; }
+      item.classList.remove('editing');
+      hideDropdown();
+    }
+    
+    function exitAndRestore(editInput, wheelId, item, originalName) {
+      editInput.value = originalName;
+      item.classList.remove('editing');
+      hideDropdown();
+    }
+    
+    document.addEventListener('click', e => {
+      const display = e.target.closest('.wheel-name-display');
+      if (!display) return;
+      e.stopPropagation();
+      const item = display.closest('.wheel-list-item');
+      if (!item) return;
+      const wheelId = parseInt(item.dataset.wheelId);
+      const wheel = wheelsData.find(w => w.id === wheelId);
+      if (!wheel) return;
+      enterEditMode(item, wheelId, wheel.name);
+    });
+    
+    document.addEventListener('input', e => {
+      const editInput = e.target.closest('.wheel-name-input');
+      if (!editInput) return;
+      const item = editInput.closest('.wheel-list-item');
+      if (!item || !item.classList.contains('editing')) return;
+      const wheelId = parseInt(item.dataset.wheelId);
+      const filterValue = editInput.value;
+      const filtered = Array.from(themeDB).filter(t => t.includes(filterValue)).slice(0, 15);
+      if (activeDropdownInput === editInput && activeDropdownType === 'theme') {
+        updateDropdownContent(filtered);
+      } else if (filtered.length) {
+        showDropdown(editInput, filtered, (selectedVal) => {
+          editInput.value = selectedVal;
+          updateWheelName(wheelId, selectedVal);
+          hideDropdown();
+          item.classList.remove('editing');
+        }, 'theme');
+      } else {
+        hideDropdown();
+      }
+    });
+    
+    document.addEventListener('keydown', e => {
+      const editInput = e.target.closest('.wheel-name-input');
+      if (!editInput) return;
+      const item = editInput.closest('.wheel-list-item');
+      if (!item || !item.classList.contains('editing')) return;
+      const wheelId = parseInt(item.dataset.wheelId);
+      const wheel = wheelsData.find(w => w.id === wheelId);
+      if (!wheel) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        exitAndSave(editInput, wheelId, item, editInput.value);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        exitAndRestore(editInput, wheelId, item, wheel.name);
+      }
+    });
+    
+    document.addEventListener('blur', e => {
+      const editInput = e.target.closest('.wheel-name-input');
+      if (!editInput) return;
+      const item = editInput.closest('.wheel-list-item');
+      if (!item || !item.classList.contains('editing')) return;
+      const wheelId = parseInt(item.dataset.wheelId);
+      isBlurPending = true;
+      setTimeout(() => {
+        if (isBlurPending && item.classList.contains('editing')) {
+          exitAndSave(editInput, wheelId, item, editInput.value);
+        }
+        isBlurPending = false;
+      }, 200);
+    }, true);
+    
+    document.getElementById('refreshThemesBtn')?.addEventListener('click', () => renderQuickThemes());
+    document.addEventListener('click', e => { const themeBtn = e.target.closest('.quick-theme-btn'); if (themeBtn) createWheel(themeBtn.dataset.theme, []); });
+    document.getElementById('compositeWheelBtn')?.addEventListener('click', openCompositeModal);
+    document.addEventListener('click', e => {
+      const toggleBtn = e.target.closest('.color-toggle-btn');
+      if (toggleBtn) { const wid = parseInt(toggleBtn.dataset.wheel); const panel = document.querySelector(`.color-panel[data-color-panel="${wid}"]`); if (panel) { const isVisible = panel.style.display === 'block'; document.querySelectorAll('.color-panel').forEach(p => p.style.display = 'none'); if (!isVisible) panel.style.display = 'block'; else panel.style.display = 'none'; } return; }
+      if (!e.target.closest('.color-panel') && !e.target.closest('.color-toggle-btn')) document.querySelectorAll('.color-panel').forEach(p => p.style.display = 'none');
+    });
+    document.addEventListener('change', e => { const picker = e.target.closest('.custom-color-picker'); if (picker) { const wid = parseInt(picker.dataset.wheel); const idx = parseInt(picker.dataset.idx); const newColor = picker.value; const wheel = wheelsData.find(w => w.id === wid); if (wheel) { let pal = [...(wheel.colorPalette || [])]; if (idx < pal.length) pal[idx] = newColor; else if (idx === pal.length && pal.length < 3) pal.push(newColor); updateWheelColorPalette(wid, pal); } return; } });
+    document.addEventListener('click', e => {
+      const addColorBtn = e.target.closest('.add-color-editor-btn'); if (addColorBtn) { const wid = parseInt(addColorBtn.dataset.wheel); const wheel = wheelsData.find(w => w.id === wid); if (wheel && wheel.colorPalette && wheel.colorPalette.length >= 3) { alert("最多3种颜色"); return; } if (wheel) { let pal = [...(wheel.colorPalette || [])]; pal.push("#b8c9b0"); updateWheelColorPalette(wid, pal); } return; }
+      const removeColorBtn = e.target.closest('.remove-color-editor-btn'); if (removeColorBtn) { const wid = parseInt(removeColorBtn.dataset.wheel); const wheel = wheelsData.find(w => w.id === wid); if (wheel && wheel.colorPalette && wheel.colorPalette.length > 1) { let pal = [...wheel.colorPalette]; pal.pop(); updateWheelColorPalette(wid, pal); } return; }
+      const paletteItem = e.target.closest('.palette-suggest-item'); if (paletteItem) { const wid = parseInt(paletteItem.dataset.wheel); const presetColors = JSON.parse(paletteItem.dataset.preset); const wheel = wheelsData.find(w => w.id === wid); if (wheel) updateWheelColorPalette(wid, presetColors); return; }
+      const refreshPalette = e.target.closest('.refresh-palette-btn'); if (refreshPalette) { const wid = parseInt(refreshPalette.dataset.wheel); refreshWheelPalette(wid); return; }
+      const applyAll = e.target.closest('.apply-all-btn'); if (applyAll) { const wid = parseInt(applyAll.dataset.wheel); const wheel = wheelsData.find(w => w.id === wid); if (wheel && wheel.colorPalette) applyPaletteToAll(wheel.colorPalette); return; }
+    });
+    document.getElementById('openKeywordLibBtn')?.addEventListener('click', openKeywordEditor);
+    document.getElementById('openThemeLibBtn')?.addEventListener('click', openThemeEditor);
+    document.getElementById('newWheelBtn')?.addEventListener('click', () => createWheel(`新转盘${wheelNameCounter++}`));
+    const container = document.getElementById('wheelsContainer');
+    if (container) {
+      container.addEventListener('click', e => { const visual = e.target.closest('.wheel-visual'); if (visual && visual.dataset.spin) spinWheelById(parseInt(visual.dataset.spin)); });
+      container.addEventListener('change', e => { if (e.target.classList.contains('wheel-items')) { const wid = parseInt(e.target.dataset.wheel); const w = wheelsData.find(w => w.id === wid); if (w) w.items = parseHashItems(e.target.value); renderAll(); } });
+    }
+    document.addEventListener('click', e => { if (!e.target.closest('.wheel-title') && !e.target.closest('.tag-input') && !e.target.closest('.wheel-name-input') && !e.target.closest('#globalDropdown')) hideDropdown(); });
+  }
+  
+  loadKeywordDB(); loadThemeDB(); loadFromLocal(); loadHistoryFromLocal();
+  if (wheelsData.length === 0) wheelNameCounter = 1;
+  renderAll();
+  bindGlobalEvents();
+  setupGlobalUI();
+</script>
+</body>
+</html>
