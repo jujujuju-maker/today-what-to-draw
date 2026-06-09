@@ -1,2 +1,2 @@
-# today-what-to-draw
+# 今天画什么
 绘画灵感转盘工具
